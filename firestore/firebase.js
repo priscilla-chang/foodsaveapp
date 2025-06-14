@@ -6,6 +6,8 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 //c
 
+//d
+
 const firebaseConfig = {
   apiKey: 'AIzaSyCs56YYb2T8D_5QpAVf1mze2LVv7UYC62A',
   authDomain: 'smarttigerapp-3af6f.firebaseapp.com',
