@@ -8,4 +8,7 @@ config.resolver.extraNodeModules = {
   tslib: path.resolve(__dirname, 'node_modules/tslib'),
 };
 
+config.resolver.unstable_enablePackageExports = false;
+
 module.exports = config;
+

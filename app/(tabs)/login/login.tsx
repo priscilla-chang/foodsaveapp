@@ -45,7 +45,7 @@ export default function LoginScreen() {
  
       <View style={styles.container}>
         <Image
-          source={require('@/assets/images/bg-yellow-half.png')}
+          source={require('../../../assets/images/yellowhalf.png')}
           style={styles.bgImage}
         />
  
