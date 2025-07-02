@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 export default function SearchScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>搜尋頁面</Text>
+      <Text style={styles.text}>購物車頁面</Text>
     </View>
   );
 }
