@@ -114,8 +114,8 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0f6657' },
-  header: { height: 60, backgroundColor: '#0f6657', justifyContent: 'center', alignItems: 'center' },
-  headerText: { fontSize: 18, color: 'white', fontWeight: 'bold' },
+  header: { height: 80, backgroundColor: '#0f6657', justifyContent: 'center', alignItems: 'center' },
+  headerText: { fontSize: 20, color: 'white', fontWeight: 'bold', letterSpacing: 1},
   container: { flex: 1, backgroundColor: '#f9f2e6', paddingHorizontal: 24, justifyContent: 'center', gap: 16 },
   bgImage: { position: 'absolute', top: 0, right: 0, width: 140, height: 140, resizeMode: 'contain' },
   input: { backgroundColor: '#fff', borderRadius: 8, padding: 12, borderColor: '#ccc', borderWidth: 1, marginBottom: 8 },
