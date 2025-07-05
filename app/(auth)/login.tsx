@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { sendEmailVerification, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import React, { useEffect, useRef, useState } from 'react';
@@ -10,7 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  StatusBar, // ← 這行
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -26,6 +27,7 @@ const { width } = Dimensions.get('window');
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // <--- 新增
   const [errorText, setErrorText] = useState('');
   const [showVerify, setShowVerify] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -37,7 +39,7 @@ export default function LoginScreen() {
   const params = useGlobalSearchParams();
   const { user } = useAuth();
 
-  // Animation (main fade/slide in)
+  // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const buttonScale = useRef(new Animated.Value(1)).current;
@@ -88,7 +90,7 @@ export default function LoginScreen() {
   // 登入流程
   const handleLogin = async () => {
     if (!email || !password) {
-      setErrorText('請輸入帳號與密碼');
+      setErrorText('請輸入電子郵件與密碼');
       return;
     }
     setIsLoading(true);
@@ -191,7 +193,6 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.container}>
-          {/* 靜態 yellowhalf.png 保持原圖不透明 */}
           <Image source={bgImg} style={styles.bgImage} />
 
           <Animated.View
@@ -224,16 +225,25 @@ export default function LoginScreen() {
               </View>
               <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
                 <Text style={styles.inputLabel}>密碼</Text>
-                <TextInput
-                  style={[styles.input, passwordFocused && styles.inputFocused]}
-                  placeholder="輸入密碼"
-                  placeholderTextColor="#999"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TextInput
+                    style={[styles.input, passwordFocused && styles.inputFocused, { flex: 1 }]}
+                    placeholder="輸入密碼"
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(s => !s)}
+                    style={{ padding: 8, marginLeft: -32 }}
+                    accessibilityLabel={showPassword ? '隱藏密碼' : '顯示密碼'}
+                  >
+                    <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="#888" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
             {errorText ? (
