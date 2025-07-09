@@ -1,45 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { ColorValue } from 'react-native';
+import { CartProvider } from '../../contexts/CartContext'; // 引入 CartProvider
 
-// 定義每個 Tab 的圖標
-const HomeIcon = ({ color, size }: { color: ColorValue; size: number }) => (
-  <Ionicons name="home" size={size} color={color} />
-);
-const CartIcon = ({ color, size }: { color: ColorValue; size: number }) => (
-  <Ionicons name="cart" size={size} color={color} />
-);
-const OrdersIcon = ({ color, size }: { color: ColorValue; size: number }) => (
-  <Ionicons name="receipt" size={size} color={color} />
-);
-const ChatIcon = ({ color, size }: { color: ColorValue; size: number }) => (
-  <Ionicons name="chatbubbles" size={size} color={color} />
-);
-const ProfileIcon = ({ color, size }: { color: ColorValue; size: number }) => (
-  <Ionicons name="person" size={size} color={color} />
-);
+// 圖示定義
+const HomeIcon = ({ color }: { color: ColorValue }) => <Ionicons name="home-outline" size={24} color={color} />;
+const CartIcon = ({ color }: { color: ColorValue }) => <Ionicons name="cart-outline" size={24} color={color} />;
+const OrdersIcon = ({ color }: { color: ColorValue }) => <Ionicons name="list-outline" size={24} color={color} />;
+const ChatIcon = ({ color }: { color: ColorValue }) => <Ionicons name="chatbubble-outline" size={24} color={color} />;
+const ProfileIcon = ({ color }: { color: ColorValue }) => <Ionicons name="person-outline" size={24} color={color} />;
 
 export default function TabLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { backgroundColor: '#0f6657', height: 65 },
-        tabBarActiveTintColor: '#FBA808',
-        tabBarInactiveTintColor: '#ffffff',
-        tabBarLabelStyle: { fontSize: 12, marginBottom: 4 },
-      }}
-    >
-      {/* 對應 app/(tabs)/index.tsx */}
-      <Tabs.Screen name="index" options={{ title: '首頁', tabBarIcon: HomeIcon }} />
-      {/* 對應 app/(tabs)/cart.tsx */}
-      <Tabs.Screen name="cart" options={{ title: '購物車', tabBarIcon: CartIcon }} />
-      {/* 對應 app/(tabs)/orders/index.tsx 或 app/(tabs)/orders.tsx */}
-      <Tabs.Screen name="orders" options={{ title: '訂單', tabBarIcon: OrdersIcon }} />
-      {/* 對應 app/(tabs)/communication/index.tsx 或 app/(tabs)/communication.tsx */}
-      <Tabs.Screen name="communication" options={{ title: '聊天', tabBarIcon: ChatIcon }} />
-      {/* 對應 app/(tabs)/profile/index.tsx 或 app/(tabs)/profile.tsx */}
-      <Tabs.Screen name="profile" options={{ title: '我的', tabBarIcon: ProfileIcon }} />
-    </Tabs>
+    <CartProvider>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: { backgroundColor: '#0f6657', height: 65 },
+          tabBarActiveTintColor: '#FBA808',
+          tabBarInactiveTintColor: '#ffffff',
+          tabBarLabelStyle: { fontSize: 12, marginBottom: 4 },
+        }}
+      >
+        <Tabs.Screen name="index" options={{ title: '首頁', tabBarIcon: HomeIcon }} />
+        <Tabs.Screen name="cart" options={{ title: '購物車', tabBarIcon: CartIcon }} />
+        <Tabs.Screen name="orders" options={{ title: '訂單', tabBarIcon: OrdersIcon }} />
+        <Tabs.Screen name="communication" options={{ title: '聊天', tabBarIcon: ChatIcon }} />
+        <Tabs.Screen name="profile" options={{ title: '我的', tabBarIcon: ProfileIcon }} />
+      </Tabs>
+    </CartProvider>
   );
 }

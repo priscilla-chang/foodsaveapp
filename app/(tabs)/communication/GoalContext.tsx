@@ -86,3 +86,5 @@ export const GoalProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </GoalContext.Provider>
   );
 };
+
+export default GoalProvider;
