@@ -2,16 +2,21 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "baseUrl": ".", // 加這行是 paths 有效的前提
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@app/*": ["app/*"],
+      "@components/*": ["components/*"],
+      "@contexts/*": ["contexts/*"],
+      "@firestore/*": ["firestore/*"],
+      "@services/*": ["services/*"],
+      "@types/*": ["types/*"]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-, "app/lib/firebase.js", "firestore/firebase.js"  ]
+    "expo-env.d.ts",
+    "firestore/firebase.ts" // ✅ firebase ts 是正確的
+  ]
 }
