@@ -1,7 +1,8 @@
-// app/(tabs)/profile/reward-card.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Stack, useRouter } from 'expo-router';
-import React, { memo, useMemo, useState } from 'react';
+import dayjs from 'dayjs';
+import { useRouter } from 'expo-router';
+import { arrayUnion, doc, increment, updateDoc } from 'firebase/firestore';
+import { useState } from 'react';
 import {
   Alert,
   Modal,
@@ -12,69 +13,19 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePoints } from '../../contexts/PointsContext'; // ← 兩層
 
-const SIGN_IN_REWARD = 1; // 要 100 就改這裡
+import { auth, db } from '../../../firestore/firebase'; // ← 常見位置：app/firestore/firebase.ts
+import { usePoints } from '../../contexts/PointsContext'; // ← 路徑依你的專案結構
+// 若你的 firebase 檔在專案根目錄 (./firestore/firebase.ts)，請改成 '../../../firestore/firebase'
 
-// === 抽離的元件們（避免 Sonar S6478） ===
-export const HeaderBack = memo(function HeaderBack({
-  onPress,
-}: {
-  readonly onPress: () => void;
-}) {
-  return (
-    <Pressable onPress={onPress}>
-      <Text style={{ fontSize: 25, color: '#2D5B50', paddingHorizontal: 16 }}>←</Text>
-    </Pressable>
-  );
-});
-
-export const DayCircle = memo(function DayCircle({ label }: { readonly label: string }) {
-  return (
-    <View style={{ alignItems: 'center' }}>
-      <View
-        style={{
-          width: 30,
-          height: 30,
-          borderRadius: 15,
-          backgroundColor: '#FFD700',
-          marginBottom: 4,
-        }}
-      />
-      <Text style={{ fontSize: 10 }}>{label}</Text>
-    </View>
-  );
-});
-
-export const RulesModal = memo(function RulesModal({
-  visible,
-  onClose,
-}: {
-  readonly visible: boolean;
-  readonly onClose: () => void;
-}) {
+type RulesModalProps = { readonly visible: boolean; readonly onClose: () => void; };
+function RulesModal({ visible, onClose }: RulesModalProps) {
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.4)',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}
-      >
-        <View
-          style={{
-            backgroundColor: '#fff',
-            padding: 20,
-            borderRadius: 12,
-            width: '85%',
-          }}
-        >
-          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>
-            點數規範
-          </Text>
-          <Text>1. 每日簽到可得 {SIGN_IN_REWARD} 點</Text>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ backgroundColor: '#fff', padding: 20, borderRadius: 12, width: '85%' }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 12 }}>點數規範</Text>
+          <Text>1. 每日簽到可得 1 點</Text>
           <Text>2. 點數不可轉讓</Text>
           <Text>3. 兌換後無法退回</Text>
           <Text style={{ marginBottom: 10 }}>4. 點數保存期限為一年</Text>
@@ -85,192 +36,144 @@ export const RulesModal = memo(function RulesModal({
       </View>
     </Modal>
   );
-});
+}
 
-// === 主頁面 ===
 export default function RewardCardScreen() {
   const router = useRouter();
-  const { points, setPoints, addHistory } = usePoints(); // 不依賴 checkInToday/loading
+  const { points, setPoints, addHistory } = usePoints();
   const [showRules, setShowRules] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [signing, setSigning] = useState(false);
 
-  const days = useMemo(
-    () => ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Today', 'Day 6', 'Day 7'],
-    []
-  );
-
-  // 本地簽到（用 AsyncStorage 防重複）
   const handleSignIn = async () => {
-    if (busy) return;
-    setBusy(true);
+    if (signing) return;
+    setSigning(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const last = await AsyncStorage.getItem('lastSignInDate');
+      const today = dayjs().format('YYYY-MM-DD');
+      const key = 'lastSignInDate';
+      const last = await AsyncStorage.getItem(key);
       if (last === today) {
         Alert.alert('你今天已經簽過囉！請明天再來😊');
         return;
       }
-      await AsyncStorage.setItem('lastSignInDate', today);
 
-      setPoints(points + SIGN_IN_REWARD);
-      const now = new Date().toLocaleString();
-      addHistory(`[${now}] 每日簽到 +${SIGN_IN_REWARD} 點`);
-      Alert.alert(`簽到成功！獲得 ${SIGN_IN_REWARD} 點`);
+      // 1) 本地記錄避免重複簽到
+      await AsyncStorage.setItem(key, today);
+
+      // 2) 先更新 UI 狀態
+      setPoints(points + 1);
+      const nowStr = new Date().toLocaleString();
+      addHistory(`[${nowStr}] 每日簽到 +1 點`);
+
+      // 3) 若已登入，順便同步到 Firestore
+      const uid = auth.currentUser?.uid;
+      if (uid) {
+        const ref = doc(db, 'users', uid);
+        await updateDoc(ref, {
+          points: increment(1),
+          history: arrayUnion(`[${nowStr}] 每日簽到 +1 點`),
+        });
+      }
+
+      Alert.alert('簽到成功！獲得 1 點');
+    } catch (e) {
+      console.warn('sign-in error', e);
+      Alert.alert('簽到失敗', '請稍後再試');
     } finally {
-      setBusy(false);
+      setSigning(false);
     }
   };
 
-  // 兌換
-  const handleRedeem = (cost: number, reward: string) => {
-    if (busy) return;
-    if (points < cost) {
-      Alert.alert('點數不足');
-      return;
+  const handleRedeem = async (cost: number, reward: string) => {
+    if (points < cost) return Alert.alert('點數不足');
+
+    // 先更新 UI
+    setPoints(points - cost);
+    addHistory(`兌換 ${reward} -${cost} 點`);
+
+    // 若登入，同步 Firestore
+    const uid = auth.currentUser?.uid;
+    if (uid) {
+      const ref = doc(db, 'users', uid);
+      try {
+        await updateDoc(ref, {
+          points: increment(-cost),
+          history: arrayUnion(`兌換 ${reward} -${cost} 點`),
+        });
+      } catch (e) {
+        console.warn('redeem error', e);
+      }
     }
-    setBusy(true);
-    try {
-      setPoints(points - cost);
-      addHistory(`兌換 ${reward} -${cost} 點`);
-      Alert.alert(`已兌換：${reward}`);
-    } finally {
-      setBusy(false);
-    }
+
+    Alert.alert(`已兌換：${reward}`);
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: '集點卡',
-          headerLeft: () => <HeaderBack onPress={() => router.back()} />,
-        }}
-      />
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF9F3' }}>
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        {/* 頂部卡片 */}
+        <View style={{ backgroundColor: '#2D5B50', borderRadius: 16, padding: 20, position: 'relative' }}>
+          <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>集點卡</Text>
+          <Text style={{ color: '#FFD700', fontSize: 36, fontWeight: 'bold' }}>{points} 點</Text>
+          <Text style={{ color: '#fff', fontSize: 12 }}>200 點將於 2025/12/31 到期</Text>
 
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF9F3' }}>
-        <ScrollView contentContainerStyle={{ padding: 20 }}>
-          {/* 頂部卡片 */}
-          <View
-            style={{
-              backgroundColor: '#2D5B50',
-              borderRadius: 16,
-              padding: 20,
-              position: 'relative',
-            }}
+          <Pressable
+            onPress={() => router.push('/profile/reward-history')}
+            style={{ position: 'absolute', top: 16, right: 16, backgroundColor: '#FFA500', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}
           >
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
-              集點卡
-            </Text>
-            <Text style={{ color: '#FFD700', fontSize: 36, fontWeight: 'bold' }}>
-              {points} 點
-            </Text>
-            <Text style={{ color: '#fff', fontSize: 12 }}>
-              200 點將於 2025/12/31 到期
-            </Text>
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>點數紀錄</Text>
+          </Pressable>
 
-            {/* 點數紀錄 */}
-            <Pressable
-              onPress={() => router.push('/profile/reward-history')}
-              style={{
-                position: 'absolute',
-                top: 16,
-                right: 16,
-                backgroundColor: '#FFA500',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 8,
-              }}
-            >
-              <Text style={{ color: '#fff', fontWeight: 'bold' }}>點數紀錄</Text>
-            </Pressable>
+          <TouchableOpacity
+            onPress={() => setShowRules(true)}
+            style={{ position: 'absolute', top: 70, right: 16, backgroundColor: '#fff', borderRadius: 50, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Text style={{ color: '#2D5B50', fontWeight: 'bold' }}>?</Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* 規範 */}
-            <TouchableOpacity
-              onPress={() => setShowRules(true)}
-              style={{
-                position: 'absolute',
-                top: 70,
-                right: 16,
-                backgroundColor: '#fff',
-                borderRadius: 50,
-                width: 24,
-                height: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ color: '#2D5B50', fontWeight: 'bold' }}>?</Text>
-            </TouchableOpacity>
+        {/* 每日簽到 */}
+        <View style={{ marginTop: 20, backgroundColor: '#fff', padding: 16, borderRadius: 16 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>每日簽到</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+            {['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Today', 'Day 6', 'Day 7'].map((day) => (
+              <View key={day} style={{ alignItems: 'center' }}>
+                <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#FFD700', marginBottom: 4 }} />
+                <Text style={{ fontSize: 10 }}>{day}</Text>
+              </View>
+            ))}
           </View>
+          <Pressable
+            disabled={signing}
+            onPress={handleSignIn}
+            style={{ backgroundColor: '#2D5B50', opacity: signing ? 0.7 : 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center', marginTop: 8 }}
+          >
+            <Text style={{ color: 'white' }}>{signing ? '處理中…' : '立即簽到'}</Text>
+          </Pressable>
+        </View>
 
-          {/* 每日簽到 */}
-          <View style={{ marginTop: 20, backgroundColor: '#fff', padding: 16, borderRadius: 16 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>
-              每日簽到
-            </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              {days.map((day) => (
-                <DayCircle key={day} label={day} />
-              ))}
+        {/* 點數兌換 */}
+        <View style={{ marginTop: 24 }}>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>點數兌換</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 12, width: '48%' }}>
+              <Text style={{ fontWeight: 'bold' }}>300 點</Text>
+              <Text style={{ marginVertical: 4 }}>200 元折價券</Text>
+              <Pressable onPress={() => handleRedeem(300, '200元折價券')} style={{ backgroundColor: '#2D5B50', borderRadius: 8, padding: 6, alignItems: 'center' }}>
+                <Text style={{ color: 'white', fontSize: 12 }}>兌換</Text>
+              </Pressable>
             </View>
-            <Pressable
-              disabled={busy}
-              onPress={handleSignIn}
-              style={{
-                backgroundColor: busy ? '#7ca79f' : '#2D5B50',
-                borderRadius: 10,
-                paddingVertical: 10,
-                alignItems: 'center',
-                marginTop: 8,
-              }}
-            >
-              <Text style={{ color: 'white' }}>{busy ? '處理中…' : '立即簽到'}</Text>
-            </Pressable>
-          </View>
-
-          {/* 點數兌換 */}
-          <View style={{ marginTop: 24 }}>
-            <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>點數兌換</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 12, width: '48%' }}>
-                <Text style={{ fontWeight: 'bold' }}>300 點</Text>
-                <Text style={{ marginVertical: 4 }}>200 元折價券</Text>
-                <Pressable
-                  disabled={busy}
-                  onPress={() => handleRedeem(300, '200元折價券')}
-                  style={{
-                    backgroundColor: busy ? '#7ca79f' : '#2D5B50',
-                    borderRadius: 8,
-                    padding: 6,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: 'white', fontSize: 12 }}>兌換</Text>
-                </Pressable>
-              </View>
-              <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 12, width: '48%' }}>
-                <Text style={{ fontWeight: 'bold' }}>1000 點</Text>
-                <Text style={{ marginVertical: 4 }}>幫助種樹</Text>
-                <Pressable
-                  disabled={busy}
-                  onPress={() => handleRedeem(1000, '種下一棵小樹')}
-                  style={{
-                    backgroundColor: busy ? '#7ca79f' : '#2D5B50',
-                    borderRadius: 8,
-                    padding: 6,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: 'white', fontSize: 12 }}>兌換</Text>
-                </Pressable>
-              </View>
+            <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 12, width: '48%' }}>
+              <Text style={{ fontWeight: 'bold' }}>1000 點</Text>
+              <Text style={{ marginVertical: 4 }}>幫助種樹</Text>
+              <Pressable onPress={() => handleRedeem(1000, '種下一棵小樹')} style={{ backgroundColor: '#2D5B50', borderRadius: 8, padding: 6, alignItems: 'center' }}>
+                <Text style={{ color: 'white', fontSize: 12 }}>兌換</Text>
+              </Pressable>
             </View>
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
 
-        <RulesModal visible={showRules} onClose={() => setShowRules(false)} />
-      </SafeAreaView>
-    </>
+      <RulesModal visible={showRules} onClose={() => setShowRules(false)} />
+    </SafeAreaView>
   );
 }
-  

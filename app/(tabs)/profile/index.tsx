@@ -1,44 +1,49 @@
-// app/(tabs)/profile/index.tsx
-import { Href, Stack, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type MenuItem = { title: string; route: Href };
+// 功能選單型別
+type MenuItem = { title: string; route: string };
 
 export default function ProfileScreen() {
-  const router = useRouter();
-
+  // 功能清單
   const menuItems: MenuItem[] = [
-    { title: '查看集點卡', route: '/profile/reward-card' },
-    { title: '點數紀錄', route: '/profile/reward-history' },
+    { title: '我的帳戶',        route: '/profile/account' },
+    { title: '我的碳足跡',      route: '/profile/co2' },
+    { title: '查看集點卡',      route: '/profile/reward-card' },
+    { title: '點數紀錄',        route: '/profile/reward-history' },
+    { title: '我的折價券',      route: '/profile/coupons' },
+    { title: '歷史訂單紀錄',    route: '/profile/order-history' },
+    { title: '我的收藏店家',    route: '/profile/favorites' },
+    { title: '常見問題',        route: '/profile/faq' },
+    { title: '隱私政策',        route: '/profile/privacy' },
+    { title: '關於',            route: '/profile/about' },
   ];
 
   return (
-    <>
-      <Stack.Screen options={{ title: '個人中心' }} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>我的</Text>
-            <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={styles.avatar} />
-            <Text style={styles.name}>使用者名稱</Text>
-            <Text style={styles.description}>這裡可以放用戶描述、信箱</Text>
-          </View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* 頭像區塊 */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>個人中心</Text>
+          <Image source={{ uri: 'https://i.pravatar.cc/100' }} style={styles.avatar} />
+          <Text style={styles.name}>使用者名稱</Text>
+          <Text style={styles.description}>這裡可以放用戶描述、信箱</Text>
+        </View>
 
-          <View style={styles.menuList}>
-            {menuItems.map((item) => (
-              <Pressable
-                key={item.title}                      // ← 修正重點
-                onPress={() => router.push(item.route)}
-                style={styles.menuButton}
-              >
+        {/* 功能清單 */}
+        <View style={styles.menuList}>
+          {menuItems.map((item) => (
+             
+            <Link key={item.title} href={item.route as any} asChild>
+              <Pressable style={styles.menuButton}>
                 <Text style={styles.menuText}>{item.title}</Text>
               </Pressable>
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </>
+            </Link>
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
