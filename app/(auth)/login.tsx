@@ -18,8 +18,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useAuth } from '../../contexts/AuthProvider';
 import { auth } from '../../firestore/firebase';
-import { useAuth } from '../AuthProvider';
 
 const bgImg = require('../../assets/images/yellowhalf.png');
 const { width } = Dimensions.get('window');

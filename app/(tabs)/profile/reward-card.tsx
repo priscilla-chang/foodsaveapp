@@ -14,8 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { usePoints } from '../../../contexts/PointsContext'; // ← 路徑依你的專案結構
 import { auth, db } from '../../../firestore/firebase'; // ← 常見位置：app/firestore/firebase.ts
-import { usePoints } from '../../contexts/PointsContext'; // ← 路徑依你的專案結構
 // 若你的 firebase 檔在專案根目錄 (./firestore/firebase.ts)，請改成 '../../../firestore/firebase'
 
 type RulesModalProps = { readonly visible: boolean; readonly onClose: () => void; };

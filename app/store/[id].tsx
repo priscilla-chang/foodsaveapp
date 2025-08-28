@@ -1,7 +1,7 @@
-// app/store/[id].tsx
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   Modal,
@@ -14,172 +14,116 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { useCart } from '../../contexts/CartContext';
 import { db } from '../../firestore/firebase';
-import { useCart } from '../contexts/CartContext';
-
-// ---- 型別 ----
-type Product = {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  description?: string;
-  storeId: string;
-};
-
-type StoreInfo = {
-  storeId: string;
-  name: string;
-  imageUrl: string;
-  star?: number;
-  distance?: number;
-};
 
 export default function StoreScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const storeId = Array.isArray(id) ? id[0] : id;
 
-  const { addToCart, clearCart, cartItems } = useCart();
+  const { addToCart, cartItems } = useCart();
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [storeInfo, setStoreInfo] = useState<any | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     if (!storeId || typeof storeId !== 'string') return;
-
     try {
-      const qProducts = query(collection(db, 'products'), where('storeId', '==', storeId));
-      const qStore = query(collection(db, 'store'), where('storeId', '==', storeId));
-      const [productSnap, storeSnap] = await Promise.all([getDocs(qProducts), getDocs(qStore)]);
+      const q1 = query(collection(db, 'products'), where('storeId', '==', storeId));
+      const q2 = query(collection(db, 'store'), where('storeId', '==', storeId));
+      const [productSnap, storeSnap] = await Promise.all([getDocs(q1), getDocs(q2)]);
 
-      const productData: Product[] = productSnap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          name: String(data.name ?? ''),
-          price: Number(data.price ?? 0),
-          imageUrl: String(data.imageUrl ?? ''),
-          description: data.description ? String(data.description) : undefined,
-          storeId: String(data.storeId ?? storeId),
-        };
-      });
-
+      const productData = productSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
       productData.sort(() => Math.random() - 0.5);
-      setProducts(productData);
 
       if (!storeSnap.empty) {
-        const s = storeSnap.docs[0].data();
-        const next: StoreInfo = {
-          storeId: String(s.storeId ?? storeId),
-          name: String(s.name ?? ''),
-          imageUrl: String(s.imageUrl ?? ''),
-          star: typeof s.star === 'number' ? s.star : undefined,
-          distance: typeof s.distance === 'number' ? s.distance : undefined,
-        };
-        setStoreInfo(next);
-      } else {
-        setStoreInfo(null);
+        setStoreInfo(storeSnap.docs[0].data());
       }
+      setProducts(productData);
     } catch (err) {
       console.error('❌ 重新載入錯誤:', err);
     }
-  }, [storeId]);
+  };
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [storeId]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = async () => {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-  }, [fetchData]);
+  };
 
-  const openModal = (product: Product) => {
+  const openModal = (product: any) => {
     setSelectedProduct(product);
     setQuantity(1);
     setModalVisible(true);
   };
 
-  const getCartStoreId = cartItems.length > 0 ? cartItems[0].storeId : null;
-
   const handleAddToCart = () => {
     if (!selectedProduct) return;
 
-    if (getCartStoreId && getCartStoreId !== storeId) {
-      setPendingProduct(selectedProduct);
-      setModalVisible(false);
-      setConfirmVisible(true);
-      return;
-    }
-
     addToCart({
+      productId: selectedProduct.productId,
       id: selectedProduct.id,
       name: selectedProduct.name,
       price: selectedProduct.price,
       quantity,
       image: selectedProduct.imageUrl,
-      description: selectedProduct.description ?? '', // ← 保證 string
-      storeId: typeof storeId === 'string' ? storeId : '',
+      description: selectedProduct.description,
+      storeId,
+      storeName: storeInfo?.name ?? '未知店家',
+      storeAddress: storeInfo?.address ?? '未提供地址',
+      latitude: storeInfo?.latitude ?? 0,
+      longitude: storeInfo?.longitude ?? 0,
     });
     setModalVisible(false);
   };
 
-  const confirmClearAndAdd = () => {
-    if (!pendingProduct) return;
-    clearCart();
-    addToCart({
-      id: pendingProduct.id,
-      name: pendingProduct.name,
-      price: pendingProduct.price,
-      quantity,
-      image: pendingProduct.imageUrl,
-      description: pendingProduct.description ?? '', // ← 保證 string
-      storeId: typeof storeId === 'string' ? storeId : '',
-    });
-    setConfirmVisible(false);
-    setPendingProduct(null);
-  };
-
   return (
     <View style={styles.pageWrapper}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backArrow}>{'\u2190'}</Text>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{storeInfo?.name ?? '載入中...'}</Text>
       </View>
 
+      {/* Scrollable Content */}
       <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.bannerWrapper}>
-          <Image source={{ uri: storeInfo?.imageUrl || undefined }} style={styles.bannerImage} />
+          <Image source={{ uri: storeInfo?.imageUrl }} style={styles.bannerImage} />
           <View style={styles.avatarWrapper}>
-            <Image source={{ uri: storeInfo?.imageUrl || undefined }} style={styles.avatar} />
+            <Image source={{ uri: storeInfo?.imageUrl }} style={styles.avatar} />
           </View>
         </View>
 
         <View style={{ paddingTop: 50 }}>
           <View style={styles.shopInfo}>
-            <Text style={styles.shopName}>{storeInfo?.name ?? ''}</Text>
+            <Text style={styles.shopName}>{storeInfo?.name}</Text>
             <Text style={styles.shopMeta}>
-              {(storeInfo?.star ?? 4.0).toFixed(1)}★ ・ {(storeInfo?.distance ?? 0).toFixed(1)}KM
+              {storeInfo?.star?.toFixed(1) ?? '4.0'}★ ・ {storeInfo?.distance?.toFixed(1) ?? '0'}KM
             </Text>
           </View>
         </View>
 
+        {/* 為您推薦 */}
         <Text style={styles.sectionTitle}>為您推薦</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cardRow}>
-          {products.map((product: Product) => (
+          {products.map((product) => (
             <TouchableOpacity key={product.id} style={styles.card} onPress={() => openModal(product)}>
               <Image source={{ uri: product.imageUrl }} style={styles.cardImage} />
               <Text style={styles.cardTitle}>{product.name}</Text>
@@ -188,9 +132,10 @@ export default function StoreScreen() {
           ))}
         </ScrollView>
 
+        {/* 人氣精選 */}
         <Text style={styles.sectionTitle}>人氣精選</Text>
         <View style={styles.verticalList}>
-          {products.map((product: Product) => (
+          {products.map((product) => (
             <TouchableOpacity key={product.id} style={styles.rowCard} onPress={() => openModal(product)}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardTitle}>{product.name}</Text>
@@ -202,64 +147,39 @@ export default function StoreScreen() {
         </View>
       </ScrollView>
 
-      {/* 商品詳情 Modal */}
+      {/* 商品 Modal */}
       <Modal visible={modalVisible} animationType="fade" transparent>
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Image source={{ uri: selectedProduct?.imageUrl || undefined }} style={styles.modalImage} />
-              <Text style={styles.modalTitle}>{selectedProduct?.name ?? ''}</Text>
-              <Text style={styles.modaltext}>{selectedProduct?.description ?? ''}</Text>
+              {/* 右上角關閉 ❌ */}
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#333" />
+              </TouchableOpacity>
+
+              <Image source={{ uri: selectedProduct?.imageUrl }} style={styles.modalImage} />
+              <Text style={styles.modalTitle}>{selectedProduct?.name}</Text>
+              <Text style={styles.modaltext}>{selectedProduct?.description}</Text>
+
               <View style={styles.quantityRow}>
-                <TouchableOpacity onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
+                <TouchableOpacity onPress={() => setQuantity(Math.max(1, quantity - 1))}>
                   <Text style={styles.qtyButton}>-</Text>
                 </TouchableOpacity>
                 <Text style={styles.qtyText}>{quantity}</Text>
-                <TouchableOpacity onPress={() => setQuantity((q) => q + 1)}>
+                <TouchableOpacity onPress={() => setQuantity(quantity + 1)}>
                   <Text style={styles.qtyButton}>+</Text>
                 </TouchableOpacity>
               </View>
               <Pressable style={styles.addButton} onPress={handleAddToCart}>
                 <Text style={styles.addButtonText}>加入購物車</Text>
               </Pressable>
-              <Pressable onPress={() => setModalVisible(false)}>
-                <Text style={{ marginTop: 12, color: '#888' }}>關閉</Text>
-              </Pressable>
             </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* 不同店家確認 Modal */}
-      <Modal visible={confirmVisible} animationType="fade" transparent>
-        <TouchableWithoutFeedback onPress={() => setConfirmVisible(false)}>
-          <View style={styles.confirmModalOverlay}>
-            <View style={styles.confirmModalContent}>
-              <Text style={styles.modalTitle}>店家不同</Text>
-              <Text style={styles.modaltext}>
-                {`購物車已有其他店家的商品，\n是否清空購物車並加入新商品？`}
-              </Text>
-              <View style={{ flexDirection: 'row', marginTop: 20 }}>
-                <Pressable
-                  style={[styles.confirmButton, { backgroundColor: '#aaa' }]}
-                  onPress={() => setConfirmVisible(false)}
-                >
-                  <Text style={styles.addButtonText}>取消</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.confirmButton, { marginLeft: 10 }]}
-                  onPress={confirmClearAndAdd}
-                >
-                  <Text style={styles.addButtonText}>清空並加入</Text>
-                </Pressable>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-
-      {/* 導到 tabs 的購物車 */}
-      <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/cart')}>
+      {/* 前往購物車 */}
+      <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/(tabs)/cart')}>
         <Text style={styles.cartButtonText}>前往購物車</Text>
       </TouchableOpacity>
     </View>
@@ -276,8 +196,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  backArrow: { color: '#fff', fontSize: 24, marginRight: 16 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
   bannerWrapper: { width: '100%', height: 160, backgroundColor: '#eee', position: 'relative' },
   bannerImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   avatarWrapper: {
@@ -305,7 +224,6 @@ const styles = StyleSheet.create({
     width: 140,
     padding: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
@@ -323,8 +241,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowImage: { width: 60, height: 60, borderRadius: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 20, width: '80%', alignItems: 'center' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '80%',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  closeBtn: { position: 'absolute', top: 10, right: 10, padding: 6 },
   modalImage: { width: 100, height: 100, marginBottom: 12, borderRadius: 8 },
   modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
   modaltext: { fontSize: 16, color: '#444', marginTop: 10, marginBottom: 4, textAlign: 'center' },
@@ -333,6 +266,8 @@ const styles = StyleSheet.create({
   qtyText: { fontSize: 16, marginHorizontal: 8 },
   addButton: { backgroundColor: '#2D5B50', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
   addButtonText: { color: '#fff', fontWeight: 'bold' },
+
+  // 前往購物車
   cartButton: {
     position: 'absolute',
     bottom: 20,
@@ -343,7 +278,4 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   cartButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  confirmModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  confirmModalContent: { backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '80%', alignItems: 'center' },
-  confirmButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#2D5B50' },
 });

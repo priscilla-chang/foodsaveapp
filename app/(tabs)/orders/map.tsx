@@ -11,25 +11,27 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 
 const { width } = Dimensions.get('window');
 
 export default function OrderMapScreen() {
   const { storeName, address, lat, lng } = useLocalSearchParams<{
-    storeName: string;
-    address: string;
-    lat: string;
-    lng: string;
+    storeName?: string;
+    address?: string;
+    lat?: string;
+    lng?: string;
   }>();
 
-  const storeCoords = useMemo(
-    () => ({
-      latitude: parseFloat(lat),
-      longitude: parseFloat(lng),
-    }),
-    [lat, lng]
-  );
+  // ✅ 安全轉數字 fallback（台北市政府）
+  const storeCoords = useMemo(() => {
+    const safeLat = parseFloat(lat ?? '25.0375'); // fallback 台北市中心
+    const safeLng = parseFloat(lng ?? '121.5637');
+    return {
+      latitude: isNaN(safeLat) ? 25.0375 : safeLat,
+      longitude: isNaN(safeLng) ? 121.5637 : safeLng,
+    };
+  }, [lat, lng]);
 
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -51,34 +53,8 @@ export default function OrderMapScreen() {
         edgePadding: { top: 80, bottom: 80, left: 80, right: 80 },
         animated: true,
       });
-
-      const subscriber = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 3000,
-          distanceInterval: 10,
-        },
-        (newLoc) => {
-          const coords = newLoc.coords;
-          const region: Region = {
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          };
-
-          setUserLocation({
-            latitude: coords.latitude,
-            longitude: coords.longitude,
-          });
-
-          mapRef.current?.animateToRegion(region, 1000);
-        }
-      );
-
-      return () => subscriber.remove();
     })();
-  }, [storeCoords]); // ✅ 修正依賴陣列
+  }, [storeCoords]);
 
   const openExternalMap = () => {
     const url =
@@ -91,15 +67,11 @@ export default function OrderMapScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.mapWrapper}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          showsUserLocation={false}
-        >
+        <MapView ref={mapRef} style={styles.map}>
           <Marker
             coordinate={storeCoords}
-            title={storeName}
-            description={address}
+            title={storeName ?? '未知店家'}
+            description={address ?? ''}
           />
           {userLocation && (
             <Marker coordinate={userLocation} title="你的目前位置">
@@ -121,9 +93,9 @@ export default function OrderMapScreen() {
                 color="#FF6B6B"
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.storeName}>{storeName}</Text>
+              <Text style={styles.storeName}>{storeName ?? '未知店家'}</Text>
             </View>
-            <Text style={styles.address}>{address}</Text>
+            <Text style={styles.address}>{address ?? '未提供地址'}</Text>
             <Text style={styles.time}>營業時間：11:00–20:00</Text>
           </View>
           <TouchableOpacity style={styles.navButton} onPress={openExternalMap}>
@@ -142,23 +114,13 @@ export default function OrderMapScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8f2e5',
-    alignItems: 'center',
-    paddingTop: 40,
-  },
+  container: { flex: 1, backgroundColor: '#f8f2e5', alignItems: 'center', paddingTop: 40 },
   mapWrapper: {
     width: width * 0.9,
     height: 500,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#eee',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
   },
   map: { flex: 1 },
   infoBox: {
@@ -167,17 +129,8 @@ const styles = StyleSheet.create({
     padding: 16,
     width: width * 0.9,
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   leftColumn: { flex: 1, paddingRight: 12 },
   iconRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   storeName: { fontSize: 14, fontWeight: 'bold', color: '#0A6859' },
@@ -201,11 +154,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 3,
   },
   tigerIcon: { fontSize: 20 },
 });

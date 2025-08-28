@@ -1,10 +1,9 @@
-// useFavorites.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const FAVORITES_KEY = 'favorites:v1';
+const FAVORITES_KEY = 'favorites:v2'; // ⚠️ 建議改 v2，避免跟舊資料混淆
 
 export type FavoriteStore = {
-  id: string;
+  id: string;        // ⚡️ 這裡直接存 Firestore 的 storeId
   store: string;
   address: string;
   latitude: number;
@@ -34,7 +33,7 @@ export async function toggleFavorite(item: FavoriteStore) {
   const exists = list.some(s => s.id === item.id);
   const next = exists ? list.filter(s => s.id !== item.id) : [item, ...list];
   await write(next);
-  return !exists; // 回傳目前是否為「已收藏」
+  return !exists; // true = 已收藏
 }
 
 export async function removeFavorite(id: string) {

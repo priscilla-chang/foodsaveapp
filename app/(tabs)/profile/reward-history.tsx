@@ -1,6 +1,6 @@
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePoints } from '../../contexts/PointsContext'; // ← 路徑已修正
+import { usePoints } from '../../../contexts/PointsContext'; // ← 路徑已修正
 
 export default function RewardHistoryScreen() {
   const { history } = usePoints();

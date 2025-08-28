@@ -1,3 +1,4 @@
+// profile/index.tsx
 import { Link } from 'expo-router';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,15 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type MenuItem = { title: string; route: string };
 
 export default function ProfileScreen() {
-  // 功能清單
   const menuItems: MenuItem[] = [
     { title: '我的帳戶',        route: '/profile/account' },
     { title: '我的碳足跡',      route: '/profile/co2' },
     { title: '查看集點卡',      route: '/profile/reward-card' },
     { title: '點數紀錄',        route: '/profile/reward-history' },
     { title: '我的折價券',      route: '/profile/coupons' },
-    { title: '歷史訂單紀錄',    route: '/profile/order-history' },
-    { title: '我的收藏店家',    route: '/profile/favorites' },
+    // 🔑 這兩個實際導向到 /orders
+    { title: '歷史訂單紀錄',    route: '/orders/history' },
+    { title: '我的收藏店家',    route: '/orders/favorites' },
     { title: '常見問題',        route: '/profile/faq' },
     { title: '隱私政策',        route: '/profile/privacy' },
     { title: '關於',            route: '/profile/about' },
@@ -34,7 +35,6 @@ export default function ProfileScreen() {
         {/* 功能清單 */}
         <View style={styles.menuList}>
           {menuItems.map((item) => (
-             
             <Link key={item.title} href={item.route as any} asChild>
               <Pressable style={styles.menuButton}>
                 <Text style={styles.menuText}>{item.title}</Text>

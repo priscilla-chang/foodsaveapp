@@ -1,32 +1,51 @@
-// app/services/orders.ts
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  where,
+} from 'firebase/firestore';
 import { db } from '../../firestore/firebase';
 import { Order } from '../types/order';
 
-// 新增訂單
-export async function addOrder(order: Omit<Order, 'id'>) {
-  const docRef = await addDoc(collection(db, 'orders'), order);
+// 建立訂單
+export async function createOrder(data: Omit<Order, 'id' | 'createdAt'>) {
+  const ref = collection(db, 'orders');
+  const docRef = await addDoc(ref, {
+    ...data,
+    orderDate: new Date().toISOString(),
+    createdAt: serverTimestamp(),
+  });
   return docRef.id;
 }
 
-// 取得全部訂單
-export async function getAllOrders() {
-  const q = query(collection(db, 'orders'));
-  const querySnapshot = await getDocs(q);
-  const orders: Order[] = [];
-  querySnapshot.forEach((doc) => {
-    orders.push({ id: doc.id, ...doc.data() } as Order);
+// 撈取會員的訂單
+export async function getOrdersByMember(mbrId: string): Promise<Order[]> {
+  const q = query(
+    collection(db, 'orders'),
+    where('mbrId', '==', mbrId),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((doc) => {
+    const data = doc.data() as Order;
+    return { ...data, id: doc.id }; // ✅ Firestore 的 id 最後補上
   });
-  return orders;
 }
 
-// 取得已完成訂單
-export async function getCompletedOrders() {
-  const q = query(collection(db, 'orders'), where('status', '==', '已完成'));
-  const querySnapshot = await getDocs(q);
-  const orders: Order[] = [];
-  querySnapshot.forEach((doc) => {
-    orders.push({ id: doc.id, ...doc.data() } as Order);
+// 撈取完成的訂單
+export async function getCompletedOrders(mbrId: string): Promise<Order[]> {
+  const q = query(
+    collection(db, 'orders'),
+    where('mbrId', '==', mbrId),
+    where('status', '==', '已完成'),
+    orderBy('createdAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((doc) => {
+    const data = doc.data() as Order;
+    return { ...data, id: doc.id };
   });
-  return orders;
 }

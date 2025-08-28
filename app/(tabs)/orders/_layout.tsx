@@ -12,6 +12,8 @@ export default function OrdersLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: '我的訂單', headerBackVisible: false }} />
+      <Stack.Screen name="history" options={{ title: '歷史訂單' }} />
+      <Stack.Screen name="favorites" options={{ title: '我的收藏' }} />
       <Stack.Screen name="detail" options={{ title: '訂單詳情' }} />
       <Stack.Screen name="map" options={{ title: '店家地圖' }} />
     </Stack>
