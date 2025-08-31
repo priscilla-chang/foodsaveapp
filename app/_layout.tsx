@@ -1,6 +1,6 @@
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StatusBar, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '../contexts/AuthProvider'; // ✅ 從根目錄
 import { CartProvider } from '../contexts/CartContext'; // ✅ 從根目錄
@@ -11,6 +11,8 @@ export default function RootLayout() {
     <AuthProvider>
       <PointsProvider>
         <CartProvider>
+          {/* ✅ 全域 StatusBar */}
+          <StatusBar barStyle="light-content" backgroundColor="#2D5B50" />
           <AuthGate />
         </CartProvider>
       </PointsProvider>
@@ -40,7 +42,7 @@ function AuthGate() {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color="#2D5B50" /> 
       </View>
     );
   }

@@ -9,7 +9,7 @@ type MenuItem = { title: string; route: string };
 export default function ProfileScreen() {
   const menuItems: MenuItem[] = [
     { title: '我的帳戶',        route: '/profile/account' },
-    { title: '我的碳足跡',      route: '/profile/co2' },
+    { title: '我的碳足跡',      route: '/profile/carbon' },
     { title: '查看集點卡',      route: '/profile/reward-card' },
     { title: '點數紀錄',        route: '/profile/reward-history' },
     { title: '我的折價券',      route: '/profile/coupons' },

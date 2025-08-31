@@ -9,12 +9,12 @@ export default function RewardHistoryScreen() {
   return (
     <>
       {/* ✅ Stack 標題與返回鍵自動出現 */}
-      <Stack.Screen options={{ title: '點數紀錄' }} />
+      <Stack.Screen options={{ title: '碳排放紀錄' }} />
 
       <SafeAreaView style={{ flex: 1, backgroundColor: '#FDF9F3' }}>
         <ScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
-            點數紀錄
+            暫無碳排放被減少
           </Text>
 
           {history.length === 0 ? (

@@ -12,12 +12,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  ScrollView,
-  StyleSheet,
+  ScrollView, StatusBar, StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
+  View
+} from 'react-native'; // ✅ 換成 React Native
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../../firestore/firebase';
 import { FavoriteStore, getFavorites, toggleFavorite } from '../../hooks/useFavorites';
 
@@ -37,6 +37,7 @@ type Store = {
 export default function CategoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [stores, setStores] = useState<Store[]>([]);
   const [categoryName, setCategoryName] = useState('');
@@ -47,42 +48,33 @@ export default function CategoryScreen() {
     if (!id) return;
     setLoading(true);
     try {
-      // 讀取分類名稱
       const catRef = doc(db, 'categories', id);
       const catSnap = await getDoc(catRef);
       const label = (catSnap.exists() ? (catSnap.data() as any).label : '') ?? '';
       setCategoryName(label);
 
-      const results: Store[] = [];
+      const strategies: [field: string, op: '==' | 'array-contains', value: string][] = [
+        ['categoriesId', '==', id],
+        ['categoryId', '==', id],
+        ['categories', 'array-contains', id],
+      ];
+      if (label) strategies.push(['categories', 'array-contains', label]);
 
-      // 查 categoriesId
-      const q1 = query(collection(db, 'store'), where('categoriesId', '==', id));
-      const snap1 = await getDocs(q1);
-      snap1.forEach(d => results.push({ id: d.id, ...(d.data() as Omit<Store, 'id'>) }));
-
-      // 查 categoryId
-      const q2 = query(collection(db, 'store'), where('categoryId', '==', id));
-      const snap2 = await getDocs(q2);
-      snap2.forEach(d => results.push({ id: d.id, ...(d.data() as Omit<Store, 'id'>) }));
-
-      // 查 categories 陣列
-      const q3 = query(collection(db, 'store'), where('categories', 'array-contains', id));
-      const snap3 = await getDocs(q3);
-      snap3.forEach(d => results.push({ id: d.id, ...(d.data() as Omit<Store, 'id'>) }));
-
-      // 如果 label 存在，額外查 categories 陣列裡存 label 的情況
-      if (label) {
-        const q4 = query(collection(db, 'store'), where('categories', 'array-contains', label));
-        const snap4 = await getDocs(q4);
-        snap4.forEach(d => results.push({ id: d.id, ...(d.data() as Omit<Store, 'id'>) }));
+      const collected = new Map<string, Store>();
+      for (const [field, op, value] of strategies) {
+        const qx = query(collection(db, 'store'), where(field as any, op as any, value));
+        const snap = await getDocs(qx);
+        snap.forEach(d => {
+          const data = d.data() as Omit<Store, 'id'>;
+          if (!collected.has(d.id)) {
+            collected.set(d.id, { id: d.id, ...data });
+          }
+        });
+        if (collected.size > 0) break;
       }
 
-      // 去重
-      const map = new Map<string, Store>();
-      results.forEach(s => map.set(s.id, s));
-      setStores([...map.values()]);
+      setStores([...collected.values()]);
 
-      // 收藏清單
       const favs = await getFavorites();
       setFavoriteSet(new Set(favs.map(f => f.id)));
     } catch (e) {
@@ -117,93 +109,100 @@ export default function CategoryScreen() {
   };
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.root}>
+      {/* ✅ 改用原生 StatusBar */}
+      <StatusBar barStyle="light-content" backgroundColor="#0A6859" />
+
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backHitbox}>
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{categoryName || '分類'}</Text>
+        <View style={styles.headerRightSpacer} />
       </View>
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0A6859" />
-          <Text style={{ marginTop: 10, color: '#666' }}>載入中…</Text>
-        </View>
-      ) : empty ? (
-        <View style={styles.center}>
-          <Text style={{ fontSize: 16, color: '#666', textAlign: 'center' }}>
-            這個分類目前沒有店家{'\n'}（請檢查 Firestore store 文件是否有正確的分類欄位）
-          </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
-            <Text style={styles.retryText}>重新整理</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView style={styles.container} contentContainerStyle={{ padding: 20 }}>
-          {stores.map((store) => {
-            const isFav = favoriteSet.has(store.id);
-            return (
-              <TouchableOpacity
-                key={store.id}
-                style={styles.card}
-                activeOpacity={0.9}
-                onPress={() => router.push(`/store/${store.id}`)}
-              >
-                <Image
-                  source={{ uri: store.imageUrl || 'https://via.placeholder.com/120' }}
-                  style={styles.image}
-                />
-                <View style={styles.info}>
-                  <Text style={styles.name}>{store.name}</Text>
-                  <Text style={styles.address}>{store.address ?? '未提供地址'}</Text>
-                  <Text style={styles.meta}>
-                    距離：約 {store.distance?.toFixed(1) ?? '0'} 公里
-                  </Text>
-                  {store.couponLabel && (
-                    <View style={styles.couponTag}>
-                      <Text style={styles.couponText}>{store.couponLabel}</Text>
-                    </View>
-                  )}
-                </View>
+      {/* Content */}
+      <View style={styles.content}>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#0A6859" />
+            <Text style={{ marginTop: 10, color: '#666' }}>載入中…</Text>
+          </View>
+        ) : empty ? (
+          <View style={styles.center}>
+            <Text style={{ fontSize: 16, color: '#666', textAlign: 'center' }}>
+              這個分類目前沒有店家{'\n'}（請檢查 Firestore store 文件是否有正確的分類欄位）
+            </Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
+              <Text style={styles.retryText}>重新整理</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+            {stores.map((store) => {
+              const isFav = favoriteSet.has(store.id);
+              return (
                 <TouchableOpacity
-                  style={styles.favoriteBtn}
-                  onPress={() => handleToggleFavorite(store)}
+                  key={store.id}
+                  style={styles.card}
+                  activeOpacity={0.9}
+                  onPress={() => router.push(`/store/${store.id}`)}
                 >
-                  <Ionicons
-                    name={isFav ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={isFav ? '#E95353' : '#999'}
+                  <Image
+                    source={{ uri: store.imageUrl || 'https://via.placeholder.com/120' }}
+                    style={styles.image}
                   />
+                  <View style={styles.info}>
+                    <Text style={styles.name}>{store.name}</Text>
+                    <Text style={styles.address}>{store.address ?? '未提供地址'}</Text>
+                    <Text style={styles.meta}>
+                      距離：約 {store.distance?.toFixed(1) ?? '0'} 公里
+                    </Text>
+                    {store.couponLabel && (
+                      <View style={styles.couponTag}>
+                        <Text style={styles.couponText}>{store.couponLabel}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={styles.favoriteBtn}
+                    onPress={() => handleToggleFavorite(store)}
+                  >
+                    <Ionicons
+                      name={isFav ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={isFav ? '#E95353' : '#999'}
+                    />
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
-    </View>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#f8f2e5' },
+  root: { flex: 1, backgroundColor: '#0A6859' },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2D5B50',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    backgroundColor: '#0A6859',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  container: { flex: 1 },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f2e5',
-    padding: 24,
-  },
+  backHitbox: { paddingHorizontal: 12, paddingVertical: 8 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: 'bold', color: '#fff' },
+  headerRightSpacer: { width: 40 },
+
+  content: { flex: 1, backgroundColor: '#f8f2e5' },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+
   card: {
     flexDirection: 'row',
     backgroundColor: '#fff',
@@ -231,6 +230,7 @@ const styles = StyleSheet.create({
   },
   couponText: { fontSize: 12, color: '#E95353', fontWeight: '600' },
   favoriteBtn: { position: 'absolute', top: 10, right: 10 },
+
   retryBtn: {
     marginTop: 16,
     backgroundColor: '#0A6859',

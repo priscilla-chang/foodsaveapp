@@ -3,8 +3,8 @@ export type OrderItem = {
   name: string;
   price: number;
   quantity: number;
-  image?: string;
-  description?: string;
+  image: string;
+  description: string;
 };
 
 export type Order = {
@@ -18,9 +18,10 @@ export type Order = {
   items: OrderItem[];
   totalPrice: number;
   pickupTime: string;
-  pickupMethod: '外帶';
-  paymentMethod: '現金';
+  pickupMethod: string;
+  paymentMethod: string;
   orderDate: string;
-  status: '進行中' | '已完成';
+  status: string;
   createdAt?: any;
+  pickupCode: string; // ✅ 新增，避免 type error
 };

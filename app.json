@@ -8,9 +8,7 @@
     "scheme": "foodsaveappsdk53",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
+    "ios": { "supportsTablet": true },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
@@ -35,8 +33,10 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
+    "experiments": { "typedRoutes": true },
+
+    "extra": {
+      "EXPO_PUBLIC_YT_API_KEY": "你的YouTubeAPI金鑰"
     }
   }
 }
