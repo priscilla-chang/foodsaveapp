@@ -1,3 +1,5 @@
+// app/types/order.ts
+
 export type OrderItem = {
   productId: string;
   name: string;
@@ -18,10 +20,10 @@ export type Order = {
   items: OrderItem[];
   totalPrice: number;
   pickupTime: string;
-  pickupMethod: string;
+  pickupMethod: '外帶'; // ✅ 固定為「外帶」
   paymentMethod: string;
   orderDate: string;
   status: string;
   createdAt?: any;
-  pickupCode: string; // ✅ 新增，避免 type error
+  pickupCode: string; // ✅ 取貨代碼
 };

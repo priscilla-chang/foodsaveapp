@@ -2,15 +2,21 @@ import { Picker } from '@react-native-picker/picker';
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const hours = ['09', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
-const minutes = ['00', '15', '30', '45'];
+// 🔥 定義分鐘型別（並 export 出去給其他檔案用）
+export type Minute15 = '00' | '15' | '30' | '45';
 
-type TimePickerModalProps = {
+// 小時範圍 09–18
+const HOURS = Array.from({ length: 10 }, (_, i) =>
+  (9 + i).toString().padStart(2, '0')
+);
+const MINUTES: Minute15[] = ['00', '15', '30', '45'];
+
+type Props = {
   readonly visible: boolean;
   readonly selectedHour: string;
-  readonly selectedMinute: string;
+  readonly selectedMinute: Minute15;
   readonly setSelectedHour: (v: string) => void;
-  readonly setSelectedMinute: (v: string) => void;
+  readonly setSelectedMinute: (v: Minute15) => void;
   readonly onConfirm: () => void;
   readonly onClose: () => void;
 };
@@ -23,47 +29,46 @@ export default function TimePickerModal({
   setSelectedMinute,
   onConfirm,
   onClose,
-}: TimePickerModalProps) {
-  const now = new Date();
-
+}: Props) {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.container}>
           <Text style={styles.title}>選擇取貨時間</Text>
+
           <View style={styles.pickerRow}>
             <Picker
               selectedValue={selectedHour}
-              style={{ flex: 1 }}
+              style={styles.picker}
               itemStyle={styles.pickerItem}
-              onValueChange={setSelectedHour}
+              onValueChange={(v) => setSelectedHour(v)}
             >
-              {hours
-                .filter((h) => parseInt(h) >= now.getHours())
-                .map((hour) => (
-                  <Picker.Item key={hour} label={`${hour} 時`} value={hour} />
-                ))}
+              {HOURS.map((h) => (
+                <Picker.Item key={h} label={`${h} 時`} value={h} />
+              ))}
             </Picker>
+
             <Picker
               selectedValue={selectedMinute}
-              style={{ flex: 1 }}
+              style={styles.picker}
               itemStyle={styles.pickerItem}
-              onValueChange={setSelectedMinute}
+              onValueChange={(v) => setSelectedMinute(v as Minute15)}
             >
-              {minutes
-                .filter((minute) => {
-                  const time = new Date();
-                  time.setHours(parseInt(selectedHour));
-                  time.setMinutes(parseInt(minute));
-                  return time.getTime() > now.getTime();
-                })
-                .map((minute) => (
-                  <Picker.Item key={minute} label={`${minute} 分`} value={minute} />
-                ))}
+              {MINUTES.map((m) => (
+                <Picker.Item key={m} label={`${m} 分`} value={m} />
+              ))}
             </Picker>
           </View>
+
           <TouchableOpacity onPress={onConfirm} style={styles.confirmButton}>
             <Text style={styles.confirmButtonText}>確定時間</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.confirmButton, { backgroundColor: '#aaa', marginTop: 8 }]}
+          >
+            <Text style={styles.confirmButtonText}>取消</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -72,39 +77,12 @@ export default function TimePickerModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    width: '80%',
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-  },
-  pickerItem: {
-    fontSize: 20,
-    color: '#000',
-  },
-  confirmButton: {
-    marginTop: 20,
-    backgroundColor: '#2D5B50',
-    padding: 10,
-    borderRadius: 8,
-  },
-  confirmButtonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  container: { backgroundColor: '#fff', borderRadius: 12, padding: 16, width: '80%' },
+  title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  pickerRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  picker: { flex: 1, height: 200, backgroundColor: '#fff' },
+  pickerItem: { fontSize: 22, color: '#000' },
+  confirmButton: { marginTop: 20, backgroundColor: '#2D5B50', padding: 12, borderRadius: 8 },
+  confirmButtonText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
 });
